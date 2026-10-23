@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-23
+
 ### Added
 
 - The repository scaffolding: the crate manifest, the toolchain pin, the dual
@@ -29,3 +31,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   layers and permissions.
 
 [Unreleased]: https://github.com/hearthsound/plugin-listenbrainz/commits/main
+[0.1.0]: https://github.com/hearthsound/plugin-listenbrainz/releases/tag/v0.1.0
