@@ -2,9 +2,10 @@
 
 A [Hearthsound](https://github.com/hearthsound) scrobbling plugin backed by
 [ListenBrainz](https://listenbrainz.org). It compiles to a WebAssembly component
-that implements the `scrobble` provider interface, so a Hearthsound server can
-announce the track a listener starts, submit finished listens and send the
-listener's love or hate for a recording.
+that implements the `scrobble` provider interface and the `account-link`
+capability, so a Hearthsound server can announce the track a listener starts,
+submit finished listens, send the listener's love or hate for a recording, and
+connect their ListenBrainz account.
 
 ## Requirements
 
@@ -65,6 +66,11 @@ The user setting is the ListenBrainz user token from
 <https://listenbrainz.org/settings/>. It is marked `writeOnly`, so the server
 seals it and never renders it back.
 
+Connecting an account validates the token with ListenBrainz before it is
+stored: an invalid token is refused with the service's answer, and a valid one
+records the MusicBrainz user name the token belongs to so the recommendation and
+playlist endpoints can address the listener.
+
 The instance requests a `host-http` rate limit of one request per second, which
 keeps a submission stream below the limit ListenBrainz publishes for user
 tokens.
@@ -86,6 +92,9 @@ tokens.
   how ListenBrainz deletes feedback.
 - The plugin asks the host to batch at most 100 listens per call and to wait at
   least a second between calls.
+- ListenBrainz has no browser authorization flow for third-party applications,
+  so the plugin links with the user-token method only. The two browser methods
+  answer with an explanatory error rather than pretending a flow exists.
 
 ## Layout
 
@@ -95,6 +104,7 @@ tokens.
 |`src/lib.rs`|The plugin: configuration, lifecycle and the provider interfaces.|
 |`src/api.rs`|The HTTP transport and its authorization header.|
 |`src/lb.rs`|Serde types for the ListenBrainz request and response bodies.|
+|`src/link.rs`|Account linking: token validation and the stored account.|
 |`src/scrobble.rs`|Listens, now playing and feedback.|
 |`src/user.rs`|The linked account's stored settings.|
 |`src/url.rs`|Base URL validation and query encoding.|

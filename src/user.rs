@@ -2,16 +2,20 @@
 //!
 //! The host hands a provider the decrypted inner config object of the user's
 //! stored envelope as a JSON string. For ListenBrainz that object holds the
-//! user token every authenticated call needs.
+//! user token every authenticated call needs and the user name the
+//! recommendation and playlist endpoints address.
 
 use hearthsound_plugin::types::{ProviderError, UserContext};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A linked ListenBrainz account's stored settings.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct UserConfig {
     /// The user token ListenBrainz issued.
     pub(crate) token: String,
+    /// The user's MusicBrainz name, recorded when the token was verified.
+    #[serde(default, rename = "userName")]
+    pub(crate) user_name: Option<String>,
 }
 
 impl UserConfig {
@@ -48,6 +52,21 @@ impl UserConfig {
 
         Ok(config)
     }
+
+    /// Serializes the settings for the host to store.
+    ///
+    /// # Returns
+    ///
+    /// The JSON object the account-link interface returns.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProviderError::Internal`] when the settings cannot be
+    /// serialized, which cannot happen for this record.
+    pub(crate) fn encode(&self) -> Result<String, ProviderError> {
+        serde_json::to_string(self)
+            .map_err(|error| ProviderError::Internal(format!("user config: {error}")))
+    }
 }
 
 #[cfg(test)]
@@ -70,6 +89,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(config.token, "abc");
+        assert_eq!(config.user_name.as_deref(), Some("fixture-user"));
     }
 
     #[test]
@@ -90,5 +110,19 @@ mod tests {
             UserConfig::from_context(&context(Some("[]"))),
             Err(ProviderError::InvalidConfig(_))
         ));
+    }
+
+    #[test]
+    fn encoding_round_trips_and_uses_the_camel_case_name() {
+        let config = UserConfig {
+            token: "abc".to_string(),
+            user_name: Some("fixture-user".to_string()),
+        };
+        let encoded = config.encode().unwrap();
+        assert_eq!(encoded, "{\"token\":\"abc\",\"userName\":\"fixture-user\"}");
+        assert_eq!(
+            UserConfig::from_context(&context(Some(&encoded))).unwrap(),
+            config
+        );
     }
 }

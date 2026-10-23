@@ -45,6 +45,7 @@ use hearthsound_plugin::types::{ProviderError, UserContext};
 
 mod api;
 pub mod lb;
+mod link;
 mod scrobble;
 pub mod url;
 mod user;
@@ -235,10 +236,11 @@ impl AccountLinkGuest for ListenBrainzPlugin {
     }
 
     fn verify_account(user: UserContext) -> Result<Account, ProviderError> {
-        let _ = user;
-        Err(ProviderError::Unavailable(
-            "account linking is not available".to_string(),
-        ))
+        let config = user
+            .config
+            .as_deref()
+            .ok_or_else(|| ProviderError::InvalidConfig("user config: missing".to_string()))?;
+        link::verify_account(&base_url()?, config)
     }
 
     fn begin_link(user: UserContext, callback_url: String) -> Result<String, ProviderError> {

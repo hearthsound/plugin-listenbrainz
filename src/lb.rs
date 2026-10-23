@@ -6,6 +6,16 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Response of `GET /1/validate-token`.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct ValidateToken {
+    /// Whether the token belongs to a user.
+    pub(crate) valid: bool,
+    /// The user's MusicBrainz name, present only for a valid token.
+    #[serde(default)]
+    pub(crate) user_name: Option<String>,
+}
+
 /// One listen in the submission form.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct RawListen {
@@ -72,4 +82,33 @@ pub(crate) struct Feedback {
     pub(crate) recording_mbid: String,
     /// `1` for love, `-1` for hate and `0` to clear.
     pub(crate) score: i8,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Parses one embedded fixture.
+    fn fixture<T: serde::de::DeserializeOwned>(name: &str) -> T {
+        let text = match name {
+            "validate_token" => include_str!("fixtures/validate_token.json"),
+            "validate_token_invalid" => include_str!("fixtures/validate_token_invalid.json"),
+            other => panic!("unknown fixture {other}"),
+        };
+        serde_json::from_str(text).unwrap()
+    }
+
+    #[test]
+    fn validate_token_reads_a_valid_answer() {
+        let answer: ValidateToken = fixture("validate_token");
+        assert!(answer.valid);
+        assert_eq!(answer.user_name.as_deref(), Some("fixture-user"));
+    }
+
+    #[test]
+    fn validate_token_reads_an_invalid_answer() {
+        let answer: ValidateToken = fixture("validate_token_invalid");
+        assert!(!answer.valid);
+        assert!(answer.user_name.is_none());
+    }
 }

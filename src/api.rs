@@ -1,8 +1,9 @@
 //! HTTP access to the ListenBrainz API through the `host-http` host import.
 //!
 //! This is the only module that touches the network. It builds one request,
-//! sends it, and either reports success or maps the response to a provider
-//! error; endpoint composition and payloads live in [`crate::scrobble`].
+//! sends it, and either decodes the JSON body or maps the response to a
+//! provider error; endpoint composition and payloads live in
+//! [`crate::scrobble`] and [`crate::link`].
 //!
 //! ListenBrainz reports an invalid token with HTTP 401 and a rate limit with
 //! HTTP 429, so the SDK's [`status_error`](hearthsound_plugin::http::status_error)
@@ -11,6 +12,7 @@
 use hearthsound_plugin::host::http;
 use hearthsound_plugin::types::ProviderError;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 /// Wall-clock budget for one ListenBrainz request, in milliseconds.
 ///
@@ -48,6 +50,27 @@ impl Client<'_> {
         } else {
             Err(hearthsound_plugin::http::status_error(&response))
         }
+    }
+
+    /// Sends a GET request and decodes the JSON body.
+    ///
+    /// # Parameters
+    ///
+    /// - `path`: API path, without a leading slash.
+    ///
+    /// # Returns
+    ///
+    /// The decoded response body.
+    ///
+    /// # Errors
+    ///
+    /// Returns the mapped response error, [`ProviderError::Unavailable`] when
+    /// the host refuses or cannot complete the request, and
+    /// [`ProviderError::Internal`] when the body is not JSON of the expected
+    /// shape.
+    pub(crate) fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, ProviderError> {
+        let response = self.send("GET", path, None)?;
+        decode(response)
     }
 
     /// Sends a request whose success carries no body the plugin reads.
@@ -120,5 +143,72 @@ impl Client<'_> {
         };
 
         hearthsound_plugin::http::send(&request)
+    }
+}
+
+/// Decodes a successful response body.
+///
+/// # Parameters
+///
+/// - `response`: the response to decode.
+///
+/// # Returns
+///
+/// The body deserialized into `T`.
+///
+/// # Errors
+///
+/// Returns the mapped response error for a non-`2xx` status and
+/// [`ProviderError::Internal`] when the body is not JSON for `T`.
+fn decode<T: DeserializeOwned>(response: http::Response) -> Result<T, ProviderError> {
+    if !hearthsound_plugin::http::is_success(&response) {
+        return Err(hearthsound_plugin::http::status_error(&response));
+    }
+    serde_json::from_slice(&response.body).map_err(|error| {
+        ProviderError::Internal(format!("unexpected ListenBrainz response: {error}"))
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Builds a response with the given status and body.
+    fn response(status: u16, body: &str) -> http::Response {
+        http::Response {
+            status,
+            headers: Vec::new(),
+            body: body.as_bytes().to_vec(),
+        }
+    }
+
+    #[test]
+    fn decode_reads_a_successful_body() {
+        let value: serde_json::Value = decode(response(200, "{\"valid\":true}")).unwrap();
+        assert_eq!(value["valid"], serde_json::json!(true));
+    }
+
+    #[test]
+    fn decode_maps_failures_to_provider_errors() {
+        assert!(matches!(
+            decode::<serde_json::Value>(response(401, "invalid token")),
+            Err(ProviderError::Unauthorized(_))
+        ));
+        assert!(matches!(
+            decode::<serde_json::Value>(response(404, "")),
+            Err(ProviderError::NotFound)
+        ));
+        assert!(matches!(
+            decode::<serde_json::Value>(response(503, "down")),
+            Err(ProviderError::Unavailable(_))
+        ));
+    }
+
+    #[test]
+    fn decode_reports_a_body_of_the_wrong_shape() {
+        assert!(matches!(
+            decode::<Vec<String>>(response(200, "{\"not\":\"a list\"}")),
+            Err(ProviderError::Internal(_))
+        ));
     }
 }

@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   submission and feedback shapes the unit tests assert.
 - The scrobble interface: now playing, finished listens submitted as `single`
   or `import`, and love/hate feedback addressed by MusicBrainz recording id.
+- Account linking with a user token: the plugin validates the token with
+  ListenBrainz, records the MusicBrainz user name it belongs to and hands the
+  sealed config back to the server, which is what the scrobble calls read.
 - The instance's `baseUrl` setting, the user token setting, configuration
   validation and a health probe, plus the manifest that declares the plugin's
   layers and permissions.
