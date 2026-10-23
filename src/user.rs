@@ -53,6 +53,28 @@ impl UserConfig {
         Ok(config)
     }
 
+    /// Returns the user name the recommendation endpoints address.
+    ///
+    /// # Returns
+    ///
+    /// The stored MusicBrainz user name.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProviderError::Unauthorized`] when the stored config predates
+    /// the name being recorded, because the endpoint cannot be called without
+    /// knowing whose recommendations to read.
+    pub(crate) fn require_name(&self) -> Result<&str, ProviderError> {
+        self.user_name
+            .as_deref()
+            .filter(|name| !name.is_empty())
+            .ok_or_else(|| {
+                ProviderError::Unauthorized(
+                    "the linked account has no ListenBrainz user name; link it again".to_string(),
+                )
+            })
+    }
+
     /// Serializes the settings for the host to store.
     ///
     /// # Returns
@@ -89,7 +111,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(config.token, "abc");
-        assert_eq!(config.user_name.as_deref(), Some("fixture-user"));
+        assert_eq!(config.require_name().unwrap(), "fixture-user");
     }
 
     #[test]
@@ -109,6 +131,15 @@ mod tests {
         assert!(matches!(
             UserConfig::from_context(&context(Some("[]"))),
             Err(ProviderError::InvalidConfig(_))
+        ));
+    }
+
+    #[test]
+    fn a_config_without_a_name_cannot_address_the_user_endpoints() {
+        let config = UserConfig::from_context(&context(Some("{\"token\":\"abc\"}"))).unwrap();
+        assert!(matches!(
+            config.require_name(),
+            Err(ProviderError::Unauthorized(_))
         ));
     }
 

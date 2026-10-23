@@ -1,0 +1,48 @@
+{
+  "playlist": {
+    "annotation": "A weekly playlist.",
+    "creator": "troi-bot",
+    "identifier": "https://listenbrainz.org/playlist/6f1b1c0c-2aee-415e-933a-4f9b1c2d0c29",
+    "title": "Weekly Jams for rob",
+    "track": [
+      {
+        "album": "Felt",
+        "creator": "Christian Loffler feat. Adna",
+        "duration": 178800,
+        "extension": {
+          "https://musicbrainz.org/doc/jspf#track": {
+            "additional_metadata": {
+              "artists": [
+                {
+                  "artist_credit_name": "Christian Loffler",
+                  "artist_mbid": "a0d91c38-f5dc-487b-9b30-b67de1e7489e",
+                  "join_phrase": " feat. "
+                },
+                {
+                  "artist_credit_name": "Adna",
+                  "artist_mbid": "69cc0c33-a4d9-4f48-bcd6-010eddee5fcb",
+                  "join_phrase": ""
+                }
+              ],
+              "caa_id": 44165292732,
+              "caa_release_mbid": "0269f70a-ebae-4c59-87bf-f41a9b1981a0"
+            },
+            "artist_identifiers": [
+              "https://musicbrainz.org/artist/a0d91c38-f5dc-487b-9b30-b67de1e7489e",
+              "https://musicbrainz.org/artist/69cc0c33-a4d9-4f48-bcd6-010eddee5fcb"
+            ]
+          }
+        },
+        "identifier": ["https://musicbrainz.org/recording/3c525387-0f7e-47e4-a731-64ce87819717"],
+        "title": "Nothing"
+      },
+      {
+        "album": "Felt",
+        "creator": "Nils Frahm",
+        "duration": 210000,
+        "identifier": "https://musicbrainz.org/recording/31dad9e2-25fc-48aa-8c01-72c3729f53a1",
+        "title": "Familiar"
+      }
+    ]
+  }
+}

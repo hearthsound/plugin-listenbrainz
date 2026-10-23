@@ -1,0 +1,37 @@
+{
+  "3c525387-0f7e-47e4-a731-64ce87819717": {
+    "recording": {
+      "first_release_date": "2026-01-23",
+      "isrcs": ["DEL021600123"],
+      "length": 178800,
+      "name": "Nothing",
+      "rels": [],
+      "url_rels": []
+    },
+    "artist": {
+      "artist_credit_id": 4628693,
+      "name": "Christian Loffler feat. Adna",
+      "artists": [
+        {
+          "artist_mbid": "a0d91c38-f5dc-487b-9b30-b67de1e7489e",
+          "join_phrase": " feat. ",
+          "name": "Christian Loffler"
+        },
+        {
+          "artist_mbid": "69cc0c33-a4d9-4f48-bcd6-010eddee5fcb",
+          "join_phrase": "",
+          "name": "Adna"
+        }
+      ]
+    },
+    "release": {
+      "album_artist_name": "Christian Loffler",
+      "caa_id": 44165292732,
+      "caa_release_mbid": "0269f70a-ebae-4c59-87bf-f41a9b1981a0",
+      "mbid": "0269f70a-ebae-4c59-87bf-f41a9b1981a0",
+      "name": "Felt",
+      "release_group_mbid": "089049f0-b4fc-4c55-a63f-162755df3c35",
+      "year": 2026
+    }
+  }
+}

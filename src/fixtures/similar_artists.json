@@ -1,0 +1,20 @@
+[
+  {
+    "artist_mbid": "5b11f4ce-a62d-471e-81fc-a69a8278c7da",
+    "name": "Nirvana",
+    "comment": "1980s-1990s US grunge band",
+    "type": "Group",
+    "gender": null,
+    "score": 11156,
+    "reference_mbid": "a74b1b7f-71a5-4011-9441-d0b5e4122711"
+  },
+  {
+    "artist_mbid": "8bfac288-ccc5-448d-9573-c33ea2aa5c30",
+    "name": "Red Hot Chili Peppers",
+    "comment": "",
+    "type": "Group",
+    "gender": null,
+    "score": 10587,
+    "reference_mbid": "a74b1b7f-71a5-4011-9441-d0b5e4122711"
+  }
+]

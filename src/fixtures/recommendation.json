@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "last_updated": 1588494361,
+    "type": "session_based",
+    "entity": "recording",
+    "mbids": [
+      {
+        "recording_mbid": "3c525387-0f7e-47e4-a731-64ce87819717",
+        "score": 9.345
+      },
+      {
+        "recording_mbid": "a6081bc1-2a76-4984-b21f-38bc3dcca3a5",
+        "score": 6.998
+      }
+    ],
+    "user_name": "fixture-user",
+    "count": 2,
+    "total_mbid_count": 2,
+    "offset": 0
+  }
+}

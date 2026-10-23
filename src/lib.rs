@@ -11,7 +11,7 @@
 //! can be pointed at a mirror or a test double. The user setting is the
 //! ListenBrainz token, which the plugin checks before it is stored.
 //!
-//! The pure logic sits in public modules ([`url`], [`lb`]); the
+//! The pure logic sits in public modules ([`url`], [`lb`], [`time`]); the
 //! binding-coupled glue that drives it stays private.
 //!
 //! # Tests
@@ -44,9 +44,11 @@ use hearthsound_plugin::scrobble_discovery_link_provider::exports::hearthsound::
 use hearthsound_plugin::types::{ProviderError, UserContext};
 
 mod api;
+mod discovery;
 pub mod lb;
 mod link;
 mod scrobble;
+pub mod time;
 pub mod url;
 mod user;
 
@@ -193,8 +195,8 @@ impl DiscoveryGuest for ListenBrainzPlugin {
         seed: TrackSeed,
         limit: u32,
     ) -> Result<Vec<SuggestedTrack>, ProviderError> {
-        let _ = (user, seed, limit);
-        Ok(Vec::new())
+        let _ = user;
+        discovery::similar_tracks(&seed, limit)
     }
 
     fn similar_artists(
@@ -202,8 +204,8 @@ impl DiscoveryGuest for ListenBrainzPlugin {
         seed: ArtistSeed,
         limit: u32,
     ) -> Result<Vec<SuggestedArtist>, ProviderError> {
-        let _ = (user, seed, limit);
-        Ok(Vec::new())
+        let _ = user;
+        discovery::similar_artists(&seed, limit)
     }
 
     fn artist_top_tracks(
@@ -211,21 +213,38 @@ impl DiscoveryGuest for ListenBrainzPlugin {
         artist: ArtistSeed,
         limit: u32,
     ) -> Result<Vec<SuggestedTrack>, ProviderError> {
-        let _ = (user, artist, limit);
-        Ok(Vec::new())
+        let _ = user;
+        let base = base_url()?;
+        let client = api::Client {
+            base_url: &base,
+            token: None,
+        };
+        discovery::artist_top_tracks(&client, &artist, limit)
     }
 
     fn recommended_tracks(
         user: UserContext,
         limit: u32,
     ) -> Result<Vec<SuggestedTrack>, ProviderError> {
-        let _ = (user, limit);
-        Ok(Vec::new())
+        let config = user::UserConfig::from_context(&user)?;
+        let user_name = config.require_name()?;
+        let base = base_url()?;
+        let client = api::Client {
+            base_url: &base,
+            token: Some(&config.token),
+        };
+        discovery::recommended_tracks(&client, user_name, limit)
     }
 
     fn playlists(user: UserContext) -> Result<Vec<GeneratedPlaylist>, ProviderError> {
-        let _ = user;
-        Ok(Vec::new())
+        let config = user::UserConfig::from_context(&user)?;
+        let user_name = config.require_name()?;
+        let base = base_url()?;
+        let client = api::Client {
+            base_url: &base,
+            token: Some(&config.token),
+        };
+        discovery::playlists(&client, user_name)
     }
 }
 

@@ -1,0 +1,32 @@
+{
+  "count": 1,
+  "offset": 0,
+  "playlist_count": 1,
+  "playlists": [
+    {
+      "playlist": {
+        "annotation": "A weekly playlist.",
+        "creator": "troi-bot",
+        "date": "2026-10-22T22:05:32.973599+00:00",
+        "extension": {
+          "https://musicbrainz.org/doc/jspf#playlist": {
+            "additional_metadata": {
+              "algorithm_metadata": {
+                "source_patch": "weekly-jams"
+              },
+              "expires_at": "2026-11-05T22:05:18.572700"
+            },
+            "collaborators": ["fixture-user"],
+            "created_for": "fixture-user",
+            "creator": "troi-bot",
+            "last_modified_at": "2026-10-22T22:05:32.973599+00:00",
+            "public": true
+          }
+        },
+        "identifier": "https://listenbrainz.org/playlist/6f1b1c0c-2aee-415e-933a-4f9b1c2d0c29",
+        "title": "Weekly Jams for rob",
+        "track": []
+      }
+    }
+  ]
+}
