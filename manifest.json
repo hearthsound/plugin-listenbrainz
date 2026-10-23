@@ -1,0 +1,59 @@
+{
+  "manifestVersion": 1,
+  "id": "app.hearthsound.listenbrainz",
+  "name": "ListenBrainz",
+  "version": "0.1.0",
+  "description": "Submit listens and love/hate feedback to ListenBrainz, link a listener's account with a user token, and suggest music from ListenBrainz recommendations and generated playlists.",
+  "authors": ["Hearthsound contributors"],
+  "license": "MIT OR Apache-2.0",
+  "homepage": "https://github.com/hearthsound/plugin-listenbrainz",
+  "api": "hearthsound:plugin@0.3.0",
+  "provides": ["scrobble", "discovery"],
+  "permissions": {
+    "http": {
+      "hosts": ["api.listenbrainz.org", "labs.api.listenbrainz.org", "$config:baseUrl"],
+      "rateLimit": { "perSecond": 1, "burst": 1 }
+    }
+  },
+  "config": {
+    "server": {
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string",
+            "format": "uri",
+            "title": "ListenBrainz API base URL",
+            "description": "Base URL of the ListenBrainz API. Point it at a mirror or a test double to keep traffic off ListenBrainz.",
+            "default": "https://api.listenbrainz.org"
+          }
+        }
+      },
+      "uiSchema": {
+        "type": "VerticalLayout",
+        "elements": [{ "type": "Control", "scope": "#/properties/baseUrl" }]
+      }
+    },
+    "user": {
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "writeOnly": true,
+            "title": "User token",
+            "description": "Your ListenBrainz user token, from https://listenbrainz.org/settings/."
+          }
+        },
+        "required": ["token"]
+      },
+      "uiSchema": {
+        "type": "VerticalLayout",
+        "elements": [{ "type": "Control", "scope": "#/properties/token" }]
+      }
+    }
+  },
+  "resources": { "memoryMb": 64, "callTimeoutMs": 15000, "maxInstances": 2 }
+}
