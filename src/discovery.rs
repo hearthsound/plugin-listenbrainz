@@ -1,10 +1,14 @@
 //! Discovery: similar tracks and artists, top tracks, recommendations and
 //! generated playlists.
 //!
-//! The labs similarity datasets answer on their own host, so those requests go
-//! to [`crate::url::LABS_BASE_URL`]; everything else uses the configured API
-//! base URL. Every translation is a pure function over the decoded payloads, so
-//! the shapes are unit-tested on the host target.
+//! The labs similarity datasets answer on their own host, so those requests
+//! compose their URLs from the configured `labsBaseUrl` setting
+//! ([`crate::url::DEFAULT_LABS_BASE_URL`] unless an administrator points it at a
+//! labs mirror or a test double); everything else uses the configured API base
+//! URL. The labs calls stay **unauthenticated**: the labs host is a public
+//! dataset host, and sending the listener's token there would hand a credential
+//! to a second origin for no benefit. Every translation is a pure function over
+//! the decoded payloads, so the shapes are unit-tested on the host target.
 
 use hearthsound_plugin::scrobble_discovery_link_provider::exports::hearthsound::plugin::discovery::{
     ArtistSeed, GeneratedPlaylist, PlaylistSummary, SuggestedArtist, SuggestedTrack, TrackSeed,
@@ -61,10 +65,51 @@ fn pair(namespace: &str, value: &str) -> IdPair {
     }
 }
 
+/// Builds the labs URL that asks for artists similar to a seed.
+///
+/// # Parameters
+///
+/// - `labs_base`: the configured labs base URL.
+/// - `mbid`: the seed artist's MusicBrainz id.
+///
+/// # Returns
+///
+/// The absolute URL of the similarity endpoint, with the dataset name
+/// percent-encoded so it cannot add a parameter.
+pub(crate) fn similar_artists_url(labs_base: &str, mbid: &str) -> String {
+    let path = format!(
+        "similar-artists/json?artist_mbids={}&algorithm={}",
+        url::encode_component(mbid),
+        url::encode_component(url::SIMILAR_ARTISTS_ALGORITHM)
+    );
+    url::endpoint(labs_base, &path)
+}
+
+/// Builds the labs URL that asks for tracks similar to a seed.
+///
+/// # Parameters
+///
+/// - `labs_base`: the configured labs base URL.
+/// - `mbid`: the seed track's MusicBrainz recording id.
+///
+/// # Returns
+///
+/// The absolute URL of the similarity endpoint, with the dataset name
+/// percent-encoded so it cannot add a parameter.
+pub(crate) fn similar_recordings_url(labs_base: &str, mbid: &str) -> String {
+    let path = format!(
+        "similar-recordings/json?recording_mbids={}&algorithm={}",
+        url::encode_component(mbid),
+        url::encode_component(url::SIMILAR_RECORDINGS_ALGORITHM)
+    );
+    url::endpoint(labs_base, &path)
+}
+
 /// Asks the labs similarity dataset for artists similar to a seed.
 ///
 /// # Parameters
 ///
+/// - `labs_base`: the configured labs base URL.
 /// - `seed`: the seed artist.
 /// - `limit`: maximum number of artists to return.
 ///
@@ -77,6 +122,7 @@ fn pair(namespace: &str, value: &str) -> IdPair {
 ///
 /// Returns the provider error of the request.
 pub(crate) fn similar_artists(
+    labs_base: &str,
     seed: &ArtistSeed,
     limit: u32,
 ) -> Result<Vec<SuggestedArtist>, ProviderError> {
@@ -84,13 +130,8 @@ pub(crate) fn similar_artists(
         return Ok(Vec::new());
     };
 
-    let path = format!(
-        "similar-artists/json?artist_mbids={}&algorithm={}",
-        url::encode_component(mbid),
-        url::encode_component(url::SIMILAR_ARTISTS_ALGORITHM)
-    );
     let rows: Vec<lb::SimilarArtist> =
-        crate::api::get_absolute(&url::endpoint(url::LABS_BASE_URL, &path))?;
+        crate::api::get_absolute(&similar_artists_url(labs_base, mbid))?;
 
     Ok(suggested_artists(&rows, limit))
 }
@@ -99,6 +140,7 @@ pub(crate) fn similar_artists(
 ///
 /// # Parameters
 ///
+/// - `labs_base`: the configured labs base URL.
 /// - `seed`: the seed track.
 /// - `limit`: maximum number of tracks to return.
 ///
@@ -111,6 +153,7 @@ pub(crate) fn similar_artists(
 ///
 /// Returns the provider error of the request.
 pub(crate) fn similar_tracks(
+    labs_base: &str,
     seed: &TrackSeed,
     limit: u32,
 ) -> Result<Vec<SuggestedTrack>, ProviderError> {
@@ -118,13 +161,8 @@ pub(crate) fn similar_tracks(
         return Ok(Vec::new());
     };
 
-    let path = format!(
-        "similar-recordings/json?recording_mbids={}&algorithm={}",
-        url::encode_component(mbid),
-        url::encode_component(url::SIMILAR_RECORDINGS_ALGORITHM)
-    );
     let rows: Vec<lb::SimilarRecording> =
-        crate::api::get_absolute(&url::endpoint(url::LABS_BASE_URL, &path))?;
+        crate::api::get_absolute(&similar_recordings_url(labs_base, mbid))?;
 
     Ok(suggested_tracks_from_similar(&rows, limit))
 }
@@ -636,9 +674,52 @@ mod tests {
             ids: Vec::new(),
         };
 
-        assert!(similar_artists(&artist, 10).unwrap().is_empty());
-        assert!(similar_tracks(&track, 10).unwrap().is_empty());
+        assert!(
+            similar_artists("https://labs.example.test", &artist, 10)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            similar_tracks("https://labs.example.test", &track, 10)
+                .unwrap()
+                .is_empty()
+        );
         assert!(artist_top_tracks(&client, &artist, 10).unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_labs_urls_use_the_configured_labs_base() {
+        assert_eq!(
+            similar_artists_url("https://labs.example.test/", "artist-id"),
+            format!(
+                "https://labs.example.test/similar-artists/json?artist_mbids=artist-id&algorithm={}",
+                url::SIMILAR_ARTISTS_ALGORITHM
+            )
+        );
+        assert_eq!(
+            similar_recordings_url("https://labs.example.test", "recording-id"),
+            format!(
+                "https://labs.example.test/similar-recordings/json?recording_mbids=recording-id&algorithm={}",
+                url::SIMILAR_RECORDINGS_ALGORITHM
+            )
+        );
+    }
+
+    #[test]
+    fn the_labs_request_carries_no_credential() {
+        let url = similar_artists_url("https://labs.example.test", "artist-id");
+        let request = crate::api::absolute_request(&url);
+
+        assert_eq!(request.method, "GET");
+        assert_eq!(request.url, url);
+        assert!(
+            request
+                .headers
+                .iter()
+                .all(|(name, _)| !name.eq_ignore_ascii_case("authorization")),
+            "a labs request must not carry the listener's token: {:?}",
+            request.headers
+        );
     }
 
     #[test]

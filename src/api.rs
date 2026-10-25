@@ -248,10 +248,30 @@ pub(crate) fn decode_optional<T: DeserializeOwned>(
     decode(response).map(Some)
 }
 
-/// Sends one anonymous request to a fully built URL.
+/// Builds the request for a fully built URL.
 ///
-/// The labs API lives on its own host, so its endpoints are composed from
-/// [`crate::url::LABS_BASE_URL`] rather than from the configured API base URL.
+/// The labs API lives on its own host, so its endpoints are composed from the
+/// configured `labsBaseUrl` setting rather than from the API base URL. The
+/// request asks for JSON and carries **no credential**: the labs host is a
+/// public dataset host, and sending the listener's token there would hand a
+/// credential to a second origin for no benefit.
+///
+/// # Parameters
+///
+/// - `url`: the absolute URL to fetch.
+///
+/// # Returns
+///
+/// The `GET` request, with an `accept` header and no authorization header.
+pub(crate) fn absolute_request(url: &str) -> http::Request {
+    let mut request = hearthsound_plugin::http::get(url);
+    request
+        .headers
+        .push(("accept".to_string(), "application/json".to_string()));
+    request
+}
+
+/// Sends one anonymous request to a fully built URL.
 ///
 /// # Parameters
 ///
@@ -266,8 +286,7 @@ pub(crate) fn decode_optional<T: DeserializeOwned>(
 /// Returns the mapped response error, and [`ProviderError::Unavailable`] when
 /// the host refuses or cannot complete the request.
 pub(crate) fn get_absolute<T: DeserializeOwned>(url: &str) -> Result<T, ProviderError> {
-    let request = hearthsound_plugin::http::get(url);
-    let response = hearthsound_plugin::http::send(&request)?;
+    let response = hearthsound_plugin::http::send(&absolute_request(url))?;
     decode(response)
 }
 

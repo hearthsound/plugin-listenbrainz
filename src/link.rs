@@ -12,6 +12,14 @@ use crate::api::Client;
 use crate::lb;
 use crate::user::UserConfig;
 
+/// Message a listener reads when ListenBrainz refuses the token.
+///
+/// The server shows its own sentence for a failed link, but this message is what
+/// lands in the host's log beside the plugin and instance, so it names the
+/// service and the action.
+const REJECTED_TOKEN: &str =
+    "ListenBrainz did not accept the user token. Check the token and try again.";
+
 /// Reads the answer ListenBrainz gives for a user token.
 ///
 /// # Parameters
@@ -52,9 +60,7 @@ pub(crate) fn account_from_answer(
     answer: lb::ValidateToken,
 ) -> Result<Account, ProviderError> {
     if !answer.valid {
-        return Err(ProviderError::Unauthorized(
-            "ListenBrainz rejected the user token".to_string(),
-        ));
+        return Err(ProviderError::Unauthorized(REJECTED_TOKEN.to_string()));
     }
 
     let user_name = answer
@@ -142,10 +148,12 @@ mod tests {
     #[test]
     fn an_invalid_token_is_unauthorized() {
         let answer: lb::ValidateToken = fixture("validate_token_invalid");
-        assert!(matches!(
-            account_from_answer("bad", answer),
-            Err(ProviderError::Unauthorized(_))
-        ));
+
+        match account_from_answer("bad", answer) {
+            Err(ProviderError::Unauthorized(message)) => assert_eq!(message, REJECTED_TOKEN),
+            Err(other) => panic!("expected Unauthorized, got {other:?}"),
+            Ok(_) => panic!("expected Unauthorized, got an account"),
+        }
     }
 
     #[test]

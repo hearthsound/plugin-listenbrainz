@@ -2,16 +2,21 @@
   "manifestVersion": 1,
   "id": "app.hearthsound.listenbrainz",
   "name": "ListenBrainz",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Submit listens and love/hate feedback to ListenBrainz, link a listener's account with a user token, and suggest music from ListenBrainz recommendations and generated playlists.",
   "authors": ["Hearthsound contributors"],
   "license": "MIT OR Apache-2.0",
   "homepage": "https://github.com/hearthsound/plugin-listenbrainz",
-  "api": "hearthsound:plugin@0.3.0",
+  "api": "hearthsound:plugin@0.4.0",
   "provides": ["scrobble", "discovery"],
   "permissions": {
     "http": {
-      "hosts": ["api.listenbrainz.org", "labs.api.listenbrainz.org", "$config:baseUrl"],
+      "hosts": [
+        "api.listenbrainz.org",
+        "labs.api.listenbrainz.org",
+        "$config:baseUrl",
+        "$config:labsBaseUrl"
+      ],
       "rateLimit": { "perSecond": 1, "burst": 1 }
     }
   },
@@ -27,12 +32,22 @@
             "title": "ListenBrainz API base URL",
             "description": "Base URL of the ListenBrainz API. Point it at a mirror or a test double to keep traffic off ListenBrainz.",
             "default": "https://api.listenbrainz.org"
+          },
+          "labsBaseUrl": {
+            "type": "string",
+            "format": "uri",
+            "title": "ListenBrainz labs base URL",
+            "description": "Base URL of the ListenBrainz labs API, which serves the similarity datasets. The datasets are served by a different host than the API; point this at a labs mirror or a test double to keep that traffic off ListenBrainz. Requests to it carry no user token.",
+            "default": "https://labs.api.listenbrainz.org"
           }
         }
       },
       "uiSchema": {
         "type": "VerticalLayout",
-        "elements": [{ "type": "Control", "scope": "#/properties/baseUrl" }]
+        "elements": [
+          { "type": "Control", "scope": "#/properties/baseUrl" },
+          { "type": "Control", "scope": "#/properties/labsBaseUrl" }
+        ]
       }
     },
     "user": {

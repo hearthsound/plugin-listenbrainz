@@ -7,7 +7,10 @@
 pub const DEFAULT_BASE_URL: &str = "https://api.listenbrainz.org";
 
 /// Base URL of the ListenBrainz labs API, which serves the similarity datasets.
-pub const LABS_BASE_URL: &str = "https://labs.api.listenbrainz.org";
+///
+/// The `labsBaseUrl` setting defaults to this value and can point the
+/// similarity calls at a labs mirror or a test double.
+pub const DEFAULT_LABS_BASE_URL: &str = "https://labs.api.listenbrainz.org";
 
 /// Sessions-based algorithm used for artist similarity.
 ///

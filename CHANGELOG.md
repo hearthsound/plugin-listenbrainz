@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
+### Added
+
+- The `labsBaseUrl` instance setting (default
+  `https://labs.api.listenbrainz.org`), so the similarity datasets can be read
+  from a labs mirror or a test double. It is validated like `baseUrl`, and a
+  configured value appears in the built `similar-artists` and
+  `similar-recordings` URLs.
+
+### Changed
+
+- Build against the `hearthsound:plugin@0.4.0` API (plugin-sdk v0.4.0).
+- The labs similarity calls stay unauthenticated: the configured labs base URL
+  replaces the built-in constant, and the listener's token is never sent to the
+  second origin that serves the datasets.
+- A refused user token now reports "ListenBrainz did not accept the user token.
+  Check the token and try again." instead of the bare word `unauthorized`.
+
 ## [0.1.0] - 2026-10-23
 
 ### Added
@@ -31,4 +50,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   layers and permissions.
 
 [Unreleased]: https://github.com/hearthsound/plugin-listenbrainz/commits/main
+[0.2.0]: https://github.com/hearthsound/plugin-listenbrainz/releases/tag/v0.2.0
 [0.1.0]: https://github.com/hearthsound/plugin-listenbrainz/releases/tag/v0.1.0

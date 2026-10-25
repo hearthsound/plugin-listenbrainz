@@ -27,7 +27,7 @@ The component lands at
 Install the plugin CLI from the SDK repository:
 
 ```console
-cargo install --locked --git https://github.com/hearthsound/plugin-sdk --tag v0.3.0 hearthsound-plugin-cli
+cargo install --locked --git https://github.com/hearthsound/plugin-sdk --tag v0.4.0 hearthsound-plugin-cli
 ```
 
 Then validate the manifest and the component:
@@ -36,7 +36,7 @@ Then validate the manifest and the component:
 hsplugin check
 ```
 
-It prints `ok: app.hearthsound.listenbrainz 0.1.0 (provides scrobble,
+It prints `ok: app.hearthsound.listenbrainz 0.2.0 (provides scrobble,
 discovery)` on success.
 
 Finally, build the archive you install on a server:
@@ -45,7 +45,7 @@ Finally, build the archive you install on a server:
 hsplugin pack --out-dir dist
 ```
 
-`dist/app.hearthsound.listenbrainz-0.1.0.hsplugin` contains the manifest and the
+`dist/app.hearthsound.listenbrainz-0.2.0.hsplugin` contains the manifest and the
 component.
 
 ## Tests
@@ -63,16 +63,17 @@ cargo test
 |Instance setting|Default|Meaning|
 |---|---|---|
 |`baseUrl`|`https://api.listenbrainz.org`|Base URL of the ListenBrainz API. Point it at a mirror or a test double to keep traffic off ListenBrainz.|
+|`labsBaseUrl`|`https://labs.api.listenbrainz.org`|Base URL of the ListenBrainz labs API, which serves the similarity datasets. The datasets live on a different host than the API; point this at a labs mirror or a test double to keep that traffic off ListenBrainz. Requests to it carry no user token.|
 
 The user setting is the ListenBrainz user token from
 <https://listenbrainz.org/settings/>. It is marked `writeOnly`, so the server
 seals it and never renders it back.
 
 Connecting an account validates the token with ListenBrainz before it is
-stored: an invalid token is refused with the service's answer, and a valid one
-records the MusicBrainz user name the token belongs to so the recommendation and
-playlist endpoints can address the listener. The plugin hands the config back to
-the server, which seals it before storing it.
+stored: an invalid token is refused with a sentence naming the token to check,
+and a valid one records the MusicBrainz user name the token belongs to so the
+recommendation and playlist endpoints can address the listener. The plugin hands
+the config back to the server, which seals it before storing it.
 
 The instance requests a `host-http` rate limit of one request per second, which
 keeps a submission stream below the limit ListenBrainz publishes for user
@@ -96,9 +97,11 @@ tokens.
 - The plugin asks the host to batch at most 100 listens per call and to wait at
   least a second between calls.
 - Similar artists and similar tracks come from the labs similarity datasets,
-  which answer on `labs.api.listenbrainz.org` and identify a seed only by
-  MusicBrainz id. A seed without one answers an empty list, which tells the
-  server to ask the next instance rather than to show nothing.
+  which answer on `labs.api.listenbrainz.org` (or the configured `labsBaseUrl`)
+  and identify a seed only by MusicBrainz id. A seed without one answers an empty
+  list, which tells the server to ask the next instance rather than to show
+  nothing. The labs calls are anonymous: the datasets are public, so the
+  listener's token is not sent to that second origin.
 - An artist's top recordings come from the popularity endpoint, so they are the
   recordings ListenBrainz counts the most listens for, in its order.
 - Recommendations are the collaborative-filtering recordings for the linked

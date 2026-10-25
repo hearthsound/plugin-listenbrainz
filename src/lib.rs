@@ -7,9 +7,11 @@
 //! ListenBrainz generates for a user) and the `account-link` capability that
 //! connects a listener's account with their user token.
 //!
-//! The only server setting is `baseUrl`, which defaults to the public API and
-//! can be pointed at a mirror or a test double. The user setting is the
-//! ListenBrainz token, which the plugin checks before it is stored.
+//! The server settings are `baseUrl`, which defaults to the public API and can
+//! be pointed at a mirror or a test double, and `labsBaseUrl`, which points the
+//! similarity datasets at a labs mirror or a test double (those requests carry
+//! no credential). The user setting is the ListenBrainz token, which the plugin
+//! checks before it is stored.
 //!
 //! The pure logic sits in public modules ([`url`], [`lb`], [`time`]); the
 //! binding-coupled glue that drives it stays private.
@@ -62,6 +64,10 @@ struct Config {
     /// Base URL of the ListenBrainz API.
     #[serde(default = "default_base_url")]
     base_url: String,
+    /// Base URL of the ListenBrainz labs API, which serves the similarity
+    /// datasets.
+    #[serde(default = "default_labs_base_url")]
+    labs_base_url: String,
 }
 
 /// Returns the base URL used when the instance configuration omits one.
@@ -69,7 +75,54 @@ fn default_base_url() -> String {
     url::DEFAULT_BASE_URL.to_string()
 }
 
-/// Reads this instance's configuration and returns its base URL.
+/// Returns the labs base URL used when the instance configuration omits one.
+fn default_labs_base_url() -> String {
+    url::DEFAULT_LABS_BASE_URL.to_string()
+}
+
+/// Normalizes and validates one configured base URL.
+///
+/// # Parameters
+///
+/// - `field`: the configuration member the value came from, named in the error
+///   so the administrator knows which setting to correct.
+/// - `value`: the configured value.
+///
+/// # Returns
+///
+/// The value trimmed and without a trailing slash.
+///
+/// # Errors
+///
+/// Returns the message naming `field` when the value is not an absolute `http`
+/// or `https` URL.
+fn checked_base_url(field: &str, value: &str) -> Result<String, String> {
+    let normalized = url::normalize_base_url(value);
+
+    if url::is_http_url(&normalized) {
+        Ok(normalized)
+    } else {
+        Err(format!(
+            "{field} must be an http or https URL, got `{value}`"
+        ))
+    }
+}
+
+/// Reads this instance's server configuration.
+///
+/// # Returns
+///
+/// The parsed configuration.
+///
+/// # Errors
+///
+/// Returns [`ProviderError::InvalidConfig`] when the configuration cannot be
+/// read or deserialized.
+fn config() -> Result<Config, ProviderError> {
+    hearthsound_plugin::config::server_config()
+}
+
+/// Reads this instance's configuration and returns its API base URL.
 ///
 /// # Returns
 ///
@@ -81,17 +134,27 @@ fn default_base_url() -> String {
 /// read or deserialized, and when the base URL is not an absolute `http` or
 /// `https` URL.
 fn base_url() -> Result<String, ProviderError> {
-    let config: Config = hearthsound_plugin::config::server_config()?;
-    let base_url = url::normalize_base_url(&config.base_url);
+    let config = config()?;
+    checked_base_url("baseUrl", &config.base_url).map_err(ProviderError::InvalidConfig)
+}
 
-    if url::is_http_url(&base_url) {
-        Ok(base_url)
-    } else {
-        Err(ProviderError::InvalidConfig(format!(
-            "baseUrl must be an http or https URL, got `{}`",
-            config.base_url
-        )))
-    }
+/// Reads this instance's configuration and returns its labs base URL.
+///
+/// The similarity datasets answer on a different host than the API, so the two
+/// `similar-*` calls compose their URLs from this value.
+///
+/// # Returns
+///
+/// The configured labs base URL, trimmed and without a trailing slash.
+///
+/// # Errors
+///
+/// Returns [`ProviderError::InvalidConfig`] when the configuration cannot be
+/// read or deserialized, and when the labs base URL is not an absolute `http`
+/// or `https` URL.
+fn labs_base_url() -> Result<String, ProviderError> {
+    let config = config()?;
+    checked_base_url("labsBaseUrl", &config.labs_base_url).map_err(ProviderError::InvalidConfig)
 }
 
 /// Validates the plugin's server-scoped configuration.
@@ -107,22 +170,26 @@ fn base_url() -> Result<String, ProviderError> {
 /// # Errors
 ///
 /// Returns one message per problem: JSON that does not deserialize into the
-/// configuration, and a `baseUrl` that is not an absolute `http` or `https`
-/// URL.
+/// configuration, and a `baseUrl` or `labsBaseUrl` that is not an absolute
+/// `http` or `https` URL.
 fn validate_config(server_config: &str) -> Result<(), Vec<String>> {
     let config: Config = match serde_json::from_str(server_config) {
         Ok(config) => config,
         Err(error) => return Err(vec![format!("server config: {error}")]),
     };
-    let base_url = url::normalize_base_url(&config.base_url);
 
-    if url::is_http_url(&base_url) {
+    let errors = [
+        checked_base_url("baseUrl", &config.base_url),
+        checked_base_url("labsBaseUrl", &config.labs_base_url),
+    ]
+    .into_iter()
+    .filter_map(Result::err)
+    .collect::<Vec<_>>();
+
+    if errors.is_empty() {
         Ok(())
     } else {
-        Err(vec![format!(
-            "baseUrl must be an http or https URL, got `{}`",
-            config.base_url
-        )])
+        Err(errors)
     }
 }
 
@@ -196,7 +263,7 @@ impl DiscoveryGuest for ListenBrainzPlugin {
         limit: u32,
     ) -> Result<Vec<SuggestedTrack>, ProviderError> {
         let _ = user;
-        discovery::similar_tracks(&seed, limit)
+        discovery::similar_tracks(&labs_base_url()?, &seed, limit)
     }
 
     fn similar_artists(
@@ -205,7 +272,7 @@ impl DiscoveryGuest for ListenBrainzPlugin {
         limit: u32,
     ) -> Result<Vec<SuggestedArtist>, ProviderError> {
         let _ = user;
-        discovery::similar_artists(&seed, limit)
+        discovery::similar_artists(&labs_base_url()?, &seed, limit)
     }
 
     fn artist_top_tracks(
@@ -299,6 +366,23 @@ mod tests {
     }
 
     #[test]
+    fn the_default_labs_base_url_is_the_public_labs_host() {
+        assert_eq!(default_labs_base_url(), "https://labs.api.listenbrainz.org");
+    }
+
+    #[test]
+    fn a_configured_labs_base_url_is_read_from_its_camel_case_member() {
+        let config: Config =
+            serde_json::from_str("{\"labsBaseUrl\":\"https://labs.example.test/\"}").unwrap();
+
+        assert_eq!(
+            checked_base_url("labsBaseUrl", &config.labs_base_url).unwrap(),
+            "https://labs.example.test"
+        );
+        assert_eq!(config.base_url, "https://api.listenbrainz.org");
+    }
+
+    #[test]
     fn the_default_configuration_is_valid() {
         assert!(validate_config("{}").is_ok());
     }
@@ -308,6 +392,14 @@ mod tests {
         let errors = validate_config("{\"baseUrl\":\"api.listenbrainz.org\"}").unwrap_err();
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("baseUrl"));
+    }
+
+    #[test]
+    fn a_non_http_labs_base_url_is_refused() {
+        let errors =
+            validate_config("{\"labsBaseUrl\":\"labs.api.listenbrainz.org\"}").unwrap_err();
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("labsBaseUrl"));
     }
 
     #[test]
