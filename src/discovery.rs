@@ -169,16 +169,23 @@ pub(crate) fn similar_tracks(
 
 /// Asks ListenBrainz for an artist's most listened recordings.
 ///
+/// The popularity endpoint is not public: ListenBrainz answers every anonymous
+/// request with `401` and a message saying an auth token is needed. Without a
+/// linked account there is no token, so this answers nothing and sends no
+/// request at all - a question that can only be refused is not worth the round
+/// trip, and the catalog layer's other instances answer the top-songs shelf
+/// instead.
+///
 /// # Parameters
 ///
-/// - `client`: the API client.
+/// - `client`: the API client, carrying the listener's token.
 /// - `seed`: the seed artist.
 /// - `limit`: maximum number of tracks to return.
 ///
 /// # Returns
 ///
 /// The artist's top recordings by listen count. An empty list means the seed
-/// carries no MusicBrainz artist id.
+/// carries no MusicBrainz artist id, or the caller has no token.
 ///
 /// # Errors
 ///
@@ -191,6 +198,10 @@ pub(crate) fn artist_top_tracks(
     let Some(mbid) = id_value(&seed.ids, "mb-artist") else {
         return Ok(Vec::new());
     };
+
+    if client.token.is_none() {
+        return Ok(Vec::new());
+    }
 
     let rows: Vec<lb::PopularRecording> = client.get(&format!(
         "1/popularity/top-recordings-for-artist/{}",
@@ -685,6 +696,26 @@ mod tests {
                 .is_empty()
         );
         assert!(artist_top_tracks(&client, &artist, 10).unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_listener_without_a_token_is_not_asked() {
+        let artist = ArtistSeed {
+            name: "Radiohead".to_string(),
+            ids: vec![hearthsound_plugin::types::IdPair {
+                namespace: "mb-artist".to_string(),
+                value: "a74b1b7f-71a5-4011-9441-d0b5e4122711".to_string(),
+            }],
+        };
+
+        // A client with no token would reach the host's `host-http` import and
+        // fail there; answering nothing proves no request was made.
+        assert!(
+            artist_top_tracks(&unqueried_client(), &artist, 10)
+                .unwrap()
+                .is_empty(),
+            "the popularity endpoint needs a token, so no request is sent without one"
+        );
     }
 
     #[test]

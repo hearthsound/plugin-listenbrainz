@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "app.hearthsound.listenbrainz",
   "name": "ListenBrainz",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Submit listens and love/hate feedback to ListenBrainz, link a listener's account with a user token, and suggest music from ListenBrainz recommendations and generated playlists.",
   "authors": ["Hearthsound contributors"],
   "license": "MIT OR Apache-2.0",

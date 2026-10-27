@@ -280,11 +280,17 @@ impl DiscoveryGuest for ListenBrainzPlugin {
         artist: ArtistSeed,
         limit: u32,
     ) -> Result<Vec<SuggestedTrack>, ProviderError> {
-        let _ = user;
+        // The popularity endpoint needs a token. A listener who has not linked
+        // an account has none, and the endpoint answers that caller with `401`,
+        // so the question is answered with nothing rather than sent.
+        let token = user
+            .as_ref()
+            .and_then(|user| user::UserConfig::from_context(user).ok())
+            .map(|config| config.token);
         let base = base_url()?;
         let client = api::Client {
             base_url: &base,
-            token: None,
+            token: token.as_deref(),
         };
         discovery::artist_top_tracks(&client, &artist, limit)
     }
